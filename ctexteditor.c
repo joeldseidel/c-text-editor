@@ -31,19 +31,29 @@ void enableRawMode(){
 	raw.c_iflag &= ~(CS8);
 	//Flip the echo flag and canonical mode and ctrl-c/z/v flag
 	raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+	//Set read time out
+	raw.c_cc[VMIN] = 0;
+	raw.c_cc[VTIME] = 1;
 	//Set the new flag to the terminal
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
 int main(){
 	enableRawMode();
-	char c;
-	while(read(STDIN_FILENO, &c, 1) == 1 && c != 'q') {
+	//Input loop
+	while(1) {
+		char c = '\0';
+		//Read keyboard input to character
+		read(STDIN_FILENO, &c, 1);
 		if(iscntrl(c)){
+			//Print ctrl-c key value line
 			printf("%d\r\n", c);
 		} else {
+			//Print entered key number and character line
 			printf("%d ('%c')\r\n", c, c);
 		}
+		//Exit on q character
+		if(c == 'q') break;
 	}
 	return 0;
 }
