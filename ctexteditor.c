@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -8,11 +9,24 @@
 struct termios orig_termios;
 
 /**
+ * Print the error message on death
+**/
+void die(const char *s){
+	//Display error message that caused the death
+	perror(s);
+	//Die 'gracefully'
+	exit(1);
+}
+
+/**
  * Toggle the terminal echo flag back on at the end
 **/
 void disableRawMode(){
 	//Reset the terminal flags
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1){
+		//Error occurred, handle in die method
+		die("tcsetattr");
+	}
 }
 
 /**
@@ -20,7 +34,10 @@ void disableRawMode(){
 **/
 void enableRawMode(){
 	//Get the current terminal and set to struct
-	tcgetattr(STDIN_FILENO, &orig_termios);
+	if(tcgetattr(STDIN_FILENO, &orig_termios) == -1){
+		//Error occurred, handle in die method
+		die("tcgetattr");
+	}
 	//Set raw mode off toggle to run at exit
 	atexit(disableRawMode);
 	struct termios raw = orig_termios;
@@ -35,7 +52,10 @@ void enableRawMode(){
 	raw.c_cc[VMIN] = 0;
 	raw.c_cc[VTIME] = 1;
 	//Set the new flag to the terminal
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1){
+		//Error occurred, handle in die method
+		die("tcsetattr");
+	}
 }
 
 int main(){
@@ -44,7 +64,10 @@ int main(){
 	while(1) {
 		char c = '\0';
 		//Read keyboard input to character
-		read(STDIN_FILENO, &c, 1);
+		if(read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN){
+			//Error occurred in reading, handle in die method
+			die("read");
+		}
 		if(iscntrl(c)){
 			//Print ctrl-c key value line
 			printf("%d\r\n", c);
